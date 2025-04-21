@@ -1,7 +1,4 @@
-import { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { useState } from 'react';
 import { nanoid } from 'nanoid';
 import { extractTextFromImage } from '@/lib/tesseract';
 
@@ -22,34 +19,13 @@ export function useChat() {
   const [extractedText, setExtractedText] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
 
-  // Listen to messages from Firestore
-  useEffect(() => {
-    const q = query(
-      collection(db, 'messages'),
-      orderBy('timestamp', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newMessages: Message[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data() as Message;
-        newMessages.push({
-          ...data,
-          id: doc.id,
-        });
-      });
-      setMessages(newMessages);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   // Function to send text message
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
 
     console.log("Sending message:", content);
 
+    // Create user message
     const userMessage: Message = {
       id: nanoid(),
       content,
@@ -57,25 +33,20 @@ export function useChat() {
       timestamp: Date.now(),
     };
 
+    // Add message to local state
+    setMessages(prev => [...prev, userMessage]);
+    setIsProcessing(true);
+    
     try {
-      console.log("Adding user message to Firestore");
-      // Add user message to Firestore
-      await addDoc(collection(db, 'messages'), userMessage);
-      
-      setIsProcessing(true);
-      
       console.log("Calling backend API...");
       
-      // Let's create a basic text question to test the API
-      const testQuestion = "What is 2+2?";
-      
-      // Call our backend API directly with a simple test question
+      // Call our backend API directly
       const response = await fetch('/api/generate-answer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content: testQuestion }),
+        body: JSON.stringify({ content }),
       });
       
       console.log("API response status:", response.status);
@@ -88,26 +59,30 @@ export function useChat() {
       const data = await response.json();
       console.log("Response data:", data);
       
-      // Add AI response to Firestore
-      console.log("Adding AI response to Firestore");
-      await addDoc(collection(db, 'messages'), {
+      // Create AI response message
+      const aiMessage: Message = {
         id: nanoid(),
         content: data.answer || "No answer returned from API",
         role: 'assistant',
         timestamp: Date.now(),
-      });
+      };
       
+      // Add AI message to local state
+      setMessages(prev => [...prev, aiMessage]);
       console.log("Message sequence completed successfully");
     } catch (error) {
       console.error('Error sending message:', error);
-      // Add error message to chat
-      console.log("Adding error message to chat");
-      await addDoc(collection(db, 'messages'), {
+      
+      // Create error message
+      const errorMessage: Message = {
         id: nanoid(),
         content: "Sorry, I couldn't generate an answer. Please try again.",
         role: 'assistant',
         timestamp: Date.now(),
-      });
+      };
+      
+      // Add error message to local state
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsProcessing(false);
     }
@@ -115,6 +90,9 @@ export function useChat() {
 
   // Function to send image with OCR text
   const sendImageWithText = async (imageUrl: string, extractedText: string) => {
+    if (!extractedText.trim()) return;
+    
+    // Create user message with image
     const userMessage: Message = {
       id: nanoid(),
       content: extractedText,
@@ -123,13 +101,12 @@ export function useChat() {
       imageUrl,
     };
 
+    // Add message to local state
+    setMessages(prev => [...prev, userMessage]);
+    setIsProcessing(true);
+    
     try {
-      // Add user message with image to Firestore
-      await addDoc(collection(db, 'messages'), userMessage);
-      
-      setIsProcessing(true);
-      
-      // Call our backend API directly with the image
+      // Call our backend API with the image
       const response = await fetch('/api/generate-answer', {
         method: 'POST',
         headers: {
@@ -147,22 +124,29 @@ export function useChat() {
       
       const data = await response.json();
       
-      // Add AI response to Firestore
-      await addDoc(collection(db, 'messages'), {
+      // Create AI response message
+      const aiMessage: Message = {
         id: nanoid(),
-        content: data.answer,
+        content: data.answer || "No answer returned from API",
         role: 'assistant',
         timestamp: Date.now(),
-      });
+      };
+      
+      // Add AI message to local state
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error sending image message:', error);
-      // Add error message to chat
-      await addDoc(collection(db, 'messages'), {
+      
+      // Create error message
+      const errorMessage: Message = {
         id: nanoid(),
         content: "Sorry, I couldn't analyze this image. Please try again.",
         role: 'assistant',
         timestamp: Date.now(),
-      });
+      };
+      
+      // Add error message to local state
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsProcessing(false);
     }
@@ -214,24 +198,12 @@ export function useChat() {
     if (!text || !previewImage) return;
     
     setIsPreviewOpen(false);
-    
-    try {
-      // Upload image to Firebase Storage
-      const storageRef = ref(storage, `images/${nanoid()}`);
-      await uploadString(storageRef, previewImage, 'data_url');
-      const downloadUrl = await getDownloadURL(storageRef);
-      
-      // Send message with image and text
-      await sendImageWithText(downloadUrl, text);
-    } catch (error) {
-      console.error('Error using extracted text:', error);
-    }
+    // Use previewImage directly for simplicity
+    await sendImageWithText(previewImage, text);
   };
 
   // Clear all messages
   const clearChat = () => {
-    // For simplicity, we'll just clear the local state
-    // In a real app, you'd want to properly delete messages from Firestore
     setMessages([]);
   };
 

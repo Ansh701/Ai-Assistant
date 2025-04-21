@@ -1,16 +1,11 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { z } from "zod";
 import { insertMessageSchema } from "@shared/schema";
 import { createWorker } from "tesseract.js";
-import OpenAI from "openai";
-
-// Setup OpenAI with API key from environment variable
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
-});
+import { generateHomeworkAnswer } from "./lib/gemini";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -18,7 +13,7 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: any, file: any, cb: any) => {
     if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
       cb(null, true);
     } else {
@@ -59,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint for OCR processing
-  app.post("/api/ocr", upload.single("image"), async (req, res) => {
+  app.post("/api/ocr", upload.single("image"), async (req: Request & { file?: any }, res) => {
     try {
       const file = req.file;
       if (!file) {
@@ -95,56 +90,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Either content or image is required" });
       }
 
-      console.log("Creating system prompt...");
-      // Create messages array for OpenAI API
-      const messages = [
-        {
-          role: "system",
-          content: "You are a helpful homework assistant that explains concepts clearly and shows step-by-step solutions. Answer questions in a friendly, tutoring tone using clear explanations. If a question is about math, provide all steps. If something is unclear, ask for clarification."
-        }
-      ];
-
-      // If there's an image, add it as a message with the content
-      if (imageBase64) {
-        console.log("Using image with content:", content?.substring(0, 50) + "...");
-        messages.push({
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: content || "Please help me solve this problem."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageBase64
-              }
-            }
-          ]
-        });
-      } else {
-        console.log("Using text only:", content?.substring(0, 50) + "...");
-        // Text-only question
-        messages.push({
-          role: "user",
-          content: content
-        });
-      }
-
-      console.log("Calling OpenAI API...");
-      // Call OpenAI API
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: messages as any,
-        temperature: 0.7,
-      });
-
-      console.log("Received response from OpenAI");
-      const answer = response.choices[0].message.content;
-      console.log("Answer:", answer?.substring(0, 50) + "...");
+      // Prepare a helpful homework assistant prompt
+      let prompt = content || "Please help me solve this problem.";
       
-      res.json({ answer });
+      // Add instructions for the AI to follow
+      const enhancedPrompt = "You are a helpful homework assistant. " + 
+        "Please explain this concept clearly with step-by-step solutions. " +
+        "Use a friendly, tutoring tone. For math problems, show all steps. " +
+        "Here's the question: " + prompt;
+      
+      console.log("Calling Gemini API...");
+      
+      try {
+        // Call Gemini API
+        const answer = await generateHomeworkAnswer(enhancedPrompt, imageBase64);
+        
+        console.log("Received response from Gemini");
+        console.log("Answer:", answer?.substring(0, 50) + "...");
+        
+        res.json({ answer });
+      } catch (error) {
+        console.error("Error from Gemini API:", error);
+        throw error;
+      }
     } catch (error) {
       console.error("Error generating answer:", error);
       res.status(500).json({ message: "Error generating answer" });
