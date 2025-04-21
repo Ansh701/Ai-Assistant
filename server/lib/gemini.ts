@@ -14,8 +14,13 @@ export async function generateHomeworkAnswer(
   imageBase64?: string
 ): Promise<string> {
   try {
-    // Gemini pro-vision for multimodal inputs, or Gemini pro for text-only
-    const modelName = imageBase64 ? 'gemini-pro-vision' : 'gemini-pro';
+    console.log("Using Gemini AI with provided API key");
+    
+    // Gemini 1.5 for both text and multimodal inputs
+    // Using Gemini 1.5 model which supports both text and image inputs
+    const modelName = 'gemini-1.5-flash';
+    
+    console.log(`Using model: ${modelName}`);
     
     // Get the model
     const model = genAI.getGenerativeModel({
@@ -48,6 +53,7 @@ export async function generateHomeworkAnswer(
     
     // Add image if provided
     if (imageBase64) {
+      console.log("Processing image for Gemini API");
       // Process image - Gemini expects base64 without the data:image prefix
       let processedImage = imageBase64;
       if (imageBase64.includes(',')) {
@@ -62,6 +68,7 @@ export async function generateHomeworkAnswer(
       });
     }
 
+    console.log("Preparing prompt configuration");
     // Create prompt
     const promptConfig = {
       contents: [
@@ -72,10 +79,12 @@ export async function generateHomeworkAnswer(
       ],
     };
 
+    console.log("Sending request to Gemini API");
     // Generate content
     const result = await model.generateContent(promptConfig);
     const response = result.response;
     
+    console.log("Received response from Gemini");
     return response.text();
   } catch (error) {
     console.error('Error generating answer with Gemini:', error);
