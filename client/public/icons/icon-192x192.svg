@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192px" height="192px" viewBox="0 0 192 192" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <rect fill="#3B82F6" x="0" y="0" width="192" height="192" rx="48"></rect>
+    <g transform="translate(32, 24)" fill="#FFFFFF" fill-rule="nonzero">
+      <path d="M64,8 C94.9,8 120,33.1 120,64 L120,104 C120,125.7 102.7,143 81,143 L47,143 C25.3,143 8,125.7 8,104 L8,64 C8,33.1 33.1,8 64,8 Z M64,24 C42,24 24,42 24,64 L24,104 C24,116.7 34.3,127 47,127 L81,127 C93.7,127 104,116.7 104,104 L104,64 C104,42 86,24 64,24 Z" opacity="0.2"></path>
+      <path d="M90,16.4 L90,72.4 C90,82.4 83,86.7 74.3,80.7 L68.5,76.6 C66.9,75.4 64.1,75.4 62.5,76.6 L56.7,80.7 C48,86.7 41,82.4 41,72.4 L41,16.4 C41,13.4 43.5,11 46.5,11 L84.5,11 C87.5,11 90,13.4 90,16.4 Z"></path>
+    </g>
+  </g>
+</svg>
