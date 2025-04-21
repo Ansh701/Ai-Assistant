@@ -48,6 +48,8 @@ export function useChat() {
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
 
+    console.log("Sending message:", content);
+
     const userMessage: Message = {
       id: nanoid(),
       content,
@@ -56,36 +58,50 @@ export function useChat() {
     };
 
     try {
+      console.log("Adding user message to Firestore");
       // Add user message to Firestore
       await addDoc(collection(db, 'messages'), userMessage);
       
       setIsProcessing(true);
       
-      // Call our backend API directly
+      console.log("Calling backend API...");
+      
+      // Let's create a basic text question to test the API
+      const testQuestion = "What is 2+2?";
+      
+      // Call our backend API directly with a simple test question
       const response = await fetch('/api/generate-answer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: testQuestion }),
       });
+      
+      console.log("API response status:", response.status);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
       
+      console.log("Parsing response...");
       const data = await response.json();
+      console.log("Response data:", data);
       
       // Add AI response to Firestore
+      console.log("Adding AI response to Firestore");
       await addDoc(collection(db, 'messages'), {
         id: nanoid(),
-        content: data.answer,
+        content: data.answer || "No answer returned from API",
         role: 'assistant',
         timestamp: Date.now(),
       });
+      
+      console.log("Message sequence completed successfully");
     } catch (error) {
       console.error('Error sending message:', error);
       // Add error message to chat
+      console.log("Adding error message to chat");
       await addDoc(collection(db, 'messages'), {
         id: nanoid(),
         content: "Sorry, I couldn't generate an answer. Please try again.",

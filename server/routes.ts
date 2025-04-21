@@ -85,12 +85,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint for generating AI responses
   app.post("/api/generate-answer", async (req, res) => {
     try {
+      console.log("Received request to /api/generate-answer");
+      console.log("Request body:", req.body);
+      
       const { content, imageBase64 } = req.body;
       
       if (!content && !imageBase64) {
+        console.log("No content or image provided");
         return res.status(400).json({ message: "Either content or image is required" });
       }
 
+      console.log("Creating system prompt...");
       // Create messages array for OpenAI API
       const messages = [
         {
@@ -101,6 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If there's an image, add it as a message with the content
       if (imageBase64) {
+        console.log("Using image with content:", content?.substring(0, 50) + "...");
         messages.push({
           role: "user",
           content: [
@@ -117,6 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ]
         });
       } else {
+        console.log("Using text only:", content?.substring(0, 50) + "...");
         // Text-only question
         messages.push({
           role: "user",
@@ -124,6 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log("Calling OpenAI API...");
       // Call OpenAI API
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       const response = await openai.chat.completions.create({
@@ -132,7 +140,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         temperature: 0.7,
       });
 
+      console.log("Received response from OpenAI");
       const answer = response.choices[0].message.content;
+      console.log("Answer:", answer?.substring(0, 50) + "...");
+      
       res.json({ answer });
     } catch (error) {
       console.error("Error generating answer:", error);
