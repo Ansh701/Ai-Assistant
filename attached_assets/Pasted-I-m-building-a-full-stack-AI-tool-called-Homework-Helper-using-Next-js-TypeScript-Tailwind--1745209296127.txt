@@ -1,0 +1,66 @@
+I'm building a full-stack AI tool called **"Homework Helper"** using Next.js (TypeScript), Tailwind CSS, Firebase, and Tesseract.js. It should scan and solve handwritten/printed questions through AI and display clean explanations in a chatbot format.
+
+Here’s what I need:
+
+🚀 GENERAL
+- Use **Next.js (with App Router and TypeScript)** for the structure
+- Use **Tailwind CSS + shadcn/ui** for beautiful, clean UI components
+- Include my name and reg no at the bottom:  
+  **"Ansh Upadhyay | 12317058"**
+- Create a professional, vibey, modern frontend
+
+📷 INPUT METHODS
+1. **Text Input:** Users can type or paste a question into the chat
+2. **Image Upload:** Users can upload a photo of a question (JPG, PNG)
+3. **Live Camera Scanner:** 
+   - Use `react-webcam` to show camera stream
+   - Allow users to capture and scan directly without uploading
+   - Display a scanner UI (Google Lens-like experience)
+4. Show preview of uploaded/captured image before processing
+
+🧠 OCR + AI
+5. Use **Tesseract.js** to extract text from uploaded or captured images
+6. Send the extracted text or typed question to **OpenAI's GPT-4 API**
+   - Ask for a simple explanation/solution for the question
+   - Return the answer in a friendly, tutor-like tone
+7. Use **Firebase Functions** to call the OpenAI API and hide API keys from the frontend
+
+💬 CHAT UI
+8. Create an interactive chat interface with:
+   - User bubble + AI response bubble
+   - Typing indicator (three animated dots while processing)
+   - Scrollable history (store chat history using Firebase Firestore)
+   - Show timestamps for each message
+
+🔥 UI/UX POLISH
+9. Add an opening animation before chatbot loads (e.g., dots, pulse)
+10. Add responsive layout: works on Windows browsers and Android
+11. Optionally make it a PWA (installable on Android like an app)
+12. Dark mode/light mode toggle
+13. Include loading states, empty states, and graceful error messages
+
+🔐 ENV + BACKEND
+14. Use Firebase for:
+    - Hosting
+    - Firestore (chat history)
+    - Storage (uploaded images)
+    - Cloud Functions (OpenAI API calls)
+15. Add `.env.local` file with:
+    - Firebase config
+    - OpenAI API key
+16. Use secure best practices (never expose OpenAI key to frontend)
+
+📁 STRUCTURE (Preferred)
+- `/src/app`: for pages
+- `/src/components`: reusable UI components (chat input, camera, bubbles)
+- `/src/lib`: Firebase config, OpenAI call utils, OCR logic
+- `/src/styles`: custom Tailwind configs if needed
+- `/functions`: Firebase Cloud Functions (Node.js)
+
+💡 Bonus if possible:
+- Voice-to-text input using Web Speech API
+- Notification or toast popup when OCR/AI is complete
+
+Keep it clean, scalable, and developer-friendly. Explain any generated code when necessary. Show me how to run it locally and deploy to Firebase.
+
+This should feel like a SaaS-grade AI product, not just a project.
