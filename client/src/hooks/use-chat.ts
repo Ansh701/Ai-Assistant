@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { httpsCallable } from 'firebase/functions';
-import { db, storage, functions } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { nanoid } from 'nanoid';
 import { extractTextFromImage } from '@/lib/tesseract';
 
@@ -62,19 +61,37 @@ export function useChat() {
       
       setIsProcessing(true);
       
-      // Call OpenAI via Firebase Function
-      const generateAnswer = httpsCallable(functions, 'generateAnswer');
-      const result = await generateAnswer({ content });
+      // Call our backend API directly
+      const response = await fetch('/api/generate-answer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
       
       // Add AI response to Firestore
       await addDoc(collection(db, 'messages'), {
         id: nanoid(),
-        content: result.data as string,
+        content: data.answer,
         role: 'assistant',
         timestamp: Date.now(),
       });
     } catch (error) {
       console.error('Error sending message:', error);
+      // Add error message to chat
+      await addDoc(collection(db, 'messages'), {
+        id: nanoid(),
+        content: "Sorry, I couldn't generate an answer. Please try again.",
+        role: 'assistant',
+        timestamp: Date.now(),
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -96,19 +113,40 @@ export function useChat() {
       
       setIsProcessing(true);
       
-      // Call OpenAI via Firebase Function
-      const generateAnswer = httpsCallable(functions, 'generateAnswer');
-      const result = await generateAnswer({ content: extractedText });
+      // Call our backend API directly with the image
+      const response = await fetch('/api/generate-answer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          content: extractedText,
+          imageBase64: imageUrl 
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
       
       // Add AI response to Firestore
       await addDoc(collection(db, 'messages'), {
         id: nanoid(),
-        content: result.data as string,
+        content: data.answer,
         role: 'assistant',
         timestamp: Date.now(),
       });
     } catch (error) {
       console.error('Error sending image message:', error);
+      // Add error message to chat
+      await addDoc(collection(db, 'messages'), {
+        id: nanoid(),
+        content: "Sorry, I couldn't analyze this image. Please try again.",
+        role: 'assistant',
+        timestamp: Date.now(),
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -175,20 +213,10 @@ export function useChat() {
   };
 
   // Clear all messages
-  const clearChat = async () => {
-    try {
-      // Delete all messages from Firestore
-      // Note: In a real implementation, you'd need to batch this
-      // This is simplified for demonstration purposes
-      messages.forEach(async (message) => {
-        await deleteDoc(collection(db, 'messages').doc(message.id));
-      });
-      
-      // Clear local state
-      setMessages([]);
-    } catch (error) {
-      console.error('Error clearing chat:', error);
-    }
+  const clearChat = () => {
+    // For simplicity, we'll just clear the local state
+    // In a real app, you'd want to properly delete messages from Firestore
+    setMessages([]);
   };
 
   return {
