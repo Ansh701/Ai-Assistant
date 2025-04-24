@@ -451,6 +451,25 @@
         addMessage("Chat history cleared. How can I help you with your homework today?");
       }
     });
+    
+    // Handle reset API key button
+    const resetApiKeyButton = document.getElementById('reset-api-key');
+    resetApiKeyButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (confirm('Are you sure you want to reset your API key? You will need to enter a new key to continue using the application.')) {
+        // Remove API key from storage
+        localStorage.removeItem('gemini-api-key');
+        apiKey = null;
+        
+        // Show API key modal
+        apiKeyModal.style.display = 'flex';
+        apiKeyInput.value = '';
+        apiKeyError.style.display = 'none';
+        
+        // Add message to chat
+        addMessage("API key has been reset. Please enter a new key to continue.");
+      }
+    });
   </script>
 </body>
 </html>
