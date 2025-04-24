@@ -88,6 +88,21 @@ export async function generateHomeworkAnswer(
     return response.text();
   } catch (error) {
     console.error('Error generating answer with Gemini:', error);
-    throw error;
+    
+    // Check for common error cases
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('Gemini API key is not configured');
+    }
+    
+    if (error.response) {
+      // API responded with an error
+      throw new Error(`Gemini API error: ${error.response.data?.error?.message || error.message}`);
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('No response received from Gemini API. Please check your internet connection.');
+    } else {
+      // Something else went wrong
+      throw new Error(`Error with Gemini request: ${error.message}`);
+    }
   }
 }
