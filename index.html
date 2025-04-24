@@ -173,12 +173,14 @@
       <div class="buttons">
         <button id="send-button">Send</button>
         <button id="image-button">📷</button>
+        <button id="clear-button" title="Clear chat history">🗑️</button>
         <input type="file" id="image-upload" class="image-upload" accept="image/*">
       </div>
     </div>
     
     <footer>
       <p>Use this for educational purposes only. Powered by Google's Gemini AI.</p>
+      <p><small><a href="#" id="reset-api-key">Reset API Key</a></small></p>
     </footer>
   </div>
 
@@ -187,7 +189,9 @@
       <h2>Welcome to AI Homework Assistant</h2>
       <p>To use this application, you need a Gemini API key from Google AI Studio.</p>
       <p>You can get your free API key from <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.</p>
+      <p><small>Your API key is stored only in your browser and is never sent to any server other than Google's API.</small></p>
       <input type="password" id="api-key-input" placeholder="Enter your Gemini API key">
+      <div id="api-key-error" style="color: red; margin-top: 5px; display: none;"></div>
       <button id="save-api-key">Start Using Assistant</button>
     </div>
   </div>
@@ -203,32 +207,96 @@
     const apiKeyInput = document.getElementById('api-key-input');
     const saveApiKeyButton = document.getElementById('save-api-key');
     
-    // Store API key
+    // Store API key and chat history
     let apiKey = localStorage.getItem('gemini-api-key');
+    let chatHistory = [];
+    
+    // Try to load chat history from localStorage
+    try {
+      const savedHistory = localStorage.getItem('chat-history');
+      if (savedHistory) {
+        chatHistory = JSON.parse(savedHistory);
+        
+        // Populate chat with history
+        chatHistory.forEach(msg => {
+          addMessage(msg.content, msg.isUser);
+        });
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      // If there's an error, start with empty history
+      chatHistory = [];
+    }
     
     // Check if API key exists
     if (apiKey) {
       apiKeyModal.style.display = 'none';
     }
     
+    // Get error display element
+    const apiKeyError = document.getElementById('api-key-error');
+    
     // Save API key
-    saveApiKeyButton.addEventListener('click', () => {
+    saveApiKeyButton.addEventListener('click', async () => {
       apiKey = apiKeyInput.value.trim();
-      if (apiKey) {
+      if (!apiKey) {
+        apiKeyError.textContent = 'Please enter an API key';
+        apiKeyError.style.display = 'block';
+        return;
+      }
+      
+      // Validate the API key by making a test request
+      try {
+        const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+        const response = await fetch(testUrl, {
+          headers: {
+            'Origin': window.location.origin
+          },
+          mode: 'cors'
+        });
+        const data = await response.json();
+        
+        if (!response.ok) {
+          apiKeyError.textContent = `Invalid API key: ${data.error?.message || 'Unknown error'}`;
+          apiKeyError.style.display = 'block';
+          return;
+        }
+        
+        // Key is valid, save it and continue
         localStorage.setItem('gemini-api-key', apiKey);
         apiKeyModal.style.display = 'none';
-      } else {
-        alert('Please enter a valid API key');
+        apiKeyError.style.display = 'none';
+        
+        // Show welcome message in chat
+        addMessage("API key verified! I'm ready to help with your homework questions. You can type a question or upload an image of a problem.");
+      } catch (error) {
+        apiKeyError.textContent = `Error validating API key: ${error.message}`;
+        apiKeyError.style.display = 'block';
       }
     });
     
-    // Function to add message to chat
-    function addMessage(content, isUser = false) {
+    // Function to add message to chat and save to history
+    function addMessage(content, isUser = false, saveToHistory = true) {
       const messageDiv = document.createElement('div');
       messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
       messageDiv.innerHTML = `<p>${content}</p>`;
       chatContainer.appendChild(messageDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
+      
+      // Save to chat history if needed
+      if (saveToHistory) {
+        chatHistory.push({ content, isUser });
+        // Keep history at a reasonable size (last 50 messages)
+        if (chatHistory.length > 50) {
+          chatHistory = chatHistory.slice(chatHistory.length - 50);
+        }
+        // Save to localStorage
+        try {
+          localStorage.setItem('chat-history', JSON.stringify(chatHistory));
+        } catch (error) {
+          console.error('Error saving chat history:', error);
+        }
+      }
     }
     
     // Function to show typing indicator
@@ -291,8 +359,10 @@
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Origin': window.location.origin
           },
+          mode: 'cors',
           body: JSON.stringify(requestBody)
         });
         
@@ -364,6 +434,22 @@
         addMessage(aiResponse);
       };
       reader.readAsDataURL(file);
+    });
+    
+    // Handle clear button click
+    const clearButton = document.getElementById('clear-button');
+    clearButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear chat history?')) {
+        // Clear chat history
+        chatHistory = [];
+        localStorage.removeItem('chat-history');
+        
+        // Clear chat container
+        chatContainer.innerHTML = '';
+        
+        // Add initial message
+        addMessage("Chat history cleared. How can I help you with your homework today?");
+      }
     });
   </script>
 </body>
